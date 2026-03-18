@@ -1,16 +1,22 @@
 const mongoose = require("mongoose");
 
-const verseSchema = new mongoose.Schema({
-  verse: String,
-  meaning: String,
-  order: Number,
-});
-
-const mantraSchema = new mongoose.Schema({
-  name: String,
-  slug: String,
-  image: String,
-  verses: [verseSchema],
-});
+const mantraSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+    },
+    content: {
+      type: String,
+      required: true,
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { timestamps: true },
+);
 
 module.exports = mongoose.model("Mantra", mantraSchema);
