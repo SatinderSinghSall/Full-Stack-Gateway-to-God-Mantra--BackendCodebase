@@ -6,10 +6,27 @@ exports.signup = async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        code: "MISSING_FIELDS",
+        message: "All fields are required.",
+      });
+    }
+
     const userExists = await User.findOne({ email });
 
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(409).json({
+        code: "EMAIL_ALREADY_EXISTS",
+        message: "An account already exists with this email.",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        code: "WEAK_PASSWORD",
+        message: "Password must be at least 6 characters.",
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -21,14 +38,17 @@ exports.signup = async (req, res) => {
       password: hashedPassword,
     });
 
-    res.json({
+    res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       token: generateToken(user._id),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      code: "SERVER_ERROR",
+      message: "Something went wrong. Please try again later.",
+    });
   }
 };
 
@@ -38,18 +58,35 @@ exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email });
 
-    if (user && (await bcrypt.compare(password, user.password))) {
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id),
+    // Account doesn't exist
+    if (!user) {
+      return res.status(404).json({
+        code: "ACCOUNT_NOT_FOUND",
+        message: "No account found with this email address.",
       });
-    } else {
-      res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // Wrong password
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        code: "INVALID_PASSWORD",
+        message: "Incorrect password. Please try again.",
+      });
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id),
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      code: "SERVER_ERROR",
+      message: "Something went wrong. Please try again later.",
+    });
   }
 };
 
